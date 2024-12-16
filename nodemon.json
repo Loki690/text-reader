@@ -1,0 +1,6 @@
+{
+    "watch": ["swagger.ts", "index.ts", "routes/"],
+    "ext": "ts,json",
+    "exec": "npx ts-node swagger.ts && npx ts-node -r tsconfig-paths/register index.ts"
+  }
+  
