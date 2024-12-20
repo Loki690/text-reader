@@ -23,6 +23,9 @@ export const processTextFile = async (
     let zeroRated = 0;
     let government = 0;
     let vat12 = 0;
+    let dateFrom = ""; // Date of the first POS Invoice
+    let dateTo = ""; // Date of the last POS Invoice
+    let currentInvoiceDate = ""; // Temporary holder for the current invoice's date
 
     const transactionSet = new Set<string>(); // Unique INV# values
     const duplicateINVSet = new Set<string>(); // Duplicates tracking
@@ -39,6 +42,12 @@ export const processTextFile = async (
           branchName = match[1];
         }
       }
+      if (line.includes("Date:")) {
+        const match = line.match(/Date:\s*(\S+)/i);
+        if (match && match[1]) {
+          currentInvoiceDate = match[1]; // Temporarily store the extracted date
+        }
+      }
 
       // Extract and store unique INV# values
       if (line.includes("INV#")) {
@@ -49,6 +58,13 @@ export const processTextFile = async (
             duplicateINVSet.add(invoice); // Record duplicate invoice
           } else {
             transactionSet.add(invoice); // Add to the unique set
+          }
+
+          if (!dateFrom || new Date(currentInvoiceDate) < new Date(dateFrom)) {
+            dateFrom = currentInvoiceDate;
+          }
+          if (!dateTo || new Date(currentInvoiceDate) > new Date(dateTo)) {
+            dateTo = currentInvoiceDate;
           }
 
           // Update the map to track occurrences
@@ -77,15 +93,39 @@ export const processTextFile = async (
       }
     });
 
+    // Function to identify missing invoice numbers
+    const findMissingInvoices = (invoices: string[]) => {
+      const missing = [];
+      const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+      const numericInvoices = invoices.map((inv) =>
+        parseInt(inv.split("-").pop()!, 10)
+      );
+      numericInvoices.sort((a, b) => a - b);
+
+      for (let i = 1; i < numericInvoices.length; i++) {
+        const prev = numericInvoices[i - 1];
+        const curr = numericInvoices[i];
+        for (let j = prev + 1; j < curr; j++) {
+          missing.push(prefix + j.toString().padStart(8, "0"));
+        }
+      }
+      return missing;
+    };
+
     // Convert the Set to an array and sort it
     const sortedInvoices = Array.from(transactionSet).sort();
+
+    // Identify missing invoice numbers
+    const missingInvoices = findMissingInvoices(sortedInvoices);
 
     // Calculate the total sum of negative values
     const negativeSum = negativeValues
       .reduce((sum, value) => sum + value, 0)
       .toFixed(2);
+
     // Prepare the response
     const response = {
+      date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
       branch: branchName || "N/A",
       transactions: transactionSet.size,
       beginningInvoice: sortedInvoices[0] || null,
@@ -99,7 +139,8 @@ export const processTextFile = async (
       vat12: vat12.toFixed(2),
       total: (vatable + vatExempt + zeroRated + government + vat12).toFixed(2),
       negativeCount: negativeValues.length, // Count of negative values
-      negativeTotal: negativeSum, // Sum of negative values
+      negativeTotal: negativeSum, // Sum of negative values,
+      missingInvoices, // List of missing invoice numbers
     };
 
     res.status(200).json(response);
@@ -171,30 +212,33 @@ export const processTextFileERP = async (
       }
 
       // Extract and store unique INV# values
-     // Count POS Invoice occurrences and track dates
-     if (trimmedLine.includes("POS Invoice:")) {
-      posInvoiceCount += 1;
+      // Count POS Invoice occurrences and track dates
+      if (trimmedLine.includes("POS Invoice:")) {
+        posInvoiceCount += 1;
 
-      // Extract invoice number
-      const match = trimmedLine.match(/POS Invoice\s*[:\-]?\s*(\S+)/i); // Extract invoice number
-      if (match && match[1]) {
-        const invoice = match[1]; // Invoice number
+        // Extract invoice number
+        const match = trimmedLine.match(/POS Invoice\s*[:\-]?\s*(\S+)/i); // Extract invoice number
+        if (match && match[1]) {
+          const invoice = match[1]; // Invoice number
 
-        if (transactionSet.has(invoice)) {
-          duplicateINVSet.add(invoice); // Record duplicate invoice
-        } else {
-          transactionSet.add(invoice); // Add to the unique set
+          if (transactionSet.has(invoice)) {
+            duplicateINVSet.add(invoice); // Record duplicate invoice
+          } else {
+            transactionSet.add(invoice); // Add to the unique set
 
-          // Update dateFrom and dateTo
-          if (!dateFrom || new Date(currentInvoiceDate) < new Date(dateFrom)) {
-            dateFrom = currentInvoiceDate;
-          }
-          if (!dateTo || new Date(currentInvoiceDate) > new Date(dateTo)) {
-            dateTo = currentInvoiceDate;
+            // Update dateFrom and dateTo
+            if (
+              !dateFrom ||
+              new Date(currentInvoiceDate) < new Date(dateFrom)
+            ) {
+              dateFrom = currentInvoiceDate;
+            }
+            if (!dateTo || new Date(currentInvoiceDate) > new Date(dateTo)) {
+              dateTo = currentInvoiceDate;
+            }
           }
         }
       }
-    }
       // Extract monetary values
       const parts = trimmedLine.split(/\s+/);
       const value = parseFloat(parts[parts.length - 1]);
@@ -217,8 +261,28 @@ export const processTextFileERP = async (
       }
     });
 
+    // Function to identify missing invoice numbers
+    const findMissingInvoices = (invoices: string[]) => {
+      const missing = [];
+      const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+      const numericInvoices = invoices.map((inv) =>
+        parseInt(inv.split("-").pop()!, 10)
+      );
+      numericInvoices.sort((a, b) => a - b);
+
+      for (let i = 1; i < numericInvoices.length; i++) {
+        const prev = numericInvoices[i - 1];
+        const curr = numericInvoices[i];
+        for (let j = prev + 1; j < curr; j++) {
+          missing.push(prefix + j.toString().padStart(4, "0"));
+        }
+      }
+      return missing;
+    };
+
     // Convert the Set to an array and sort it
     const sortedInvoices = Array.from(transactionSet).sort();
+    const missingInvoices = findMissingInvoices(sortedInvoices);
 
     // Calculate the total sum
     const grandTotal = vatable + vatExempt + zeroRated + government + vat12;
@@ -231,7 +295,7 @@ export const processTextFileERP = async (
 
     // Prepare the response
     const response = {
-      date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A", 
+      date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
       branchName: branchName || "N/A",
       posProfile: posProfile || "N/A",
       posInvoiceCount,
@@ -249,6 +313,7 @@ export const processTextFileERP = async (
       grandTotal: grandTotal.toFixed(2), // Include the total sum
       negativeCount: negativeValues.length, // Count of negative values
       negativeTotal: negativeSum, // Sum of negative values
+      missingInvoices, // List of missing invoice numbers
     };
 
     // Send the response
