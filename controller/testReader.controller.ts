@@ -106,7 +106,7 @@ export const processTextFile = async (
         const prev = numericInvoices[i - 1];
         const curr = numericInvoices[i];
         for (let j = prev + 1; j < curr; j++) {
-          missing.push(prefix + j.toString().padStart(8, "0"));
+          missing.push(prefix + j.toString().padStart(4, "0"));
         }
       }
       return missing;
@@ -141,6 +141,7 @@ export const processTextFile = async (
       negativeCount: negativeValues.length, // Count of negative values
       negativeTotal: negativeSum, // Sum of negative values,
       missingInvoices, // List of missing invoice numbers
+      missingInvoiceCount: missingInvoices.length, // Count of missing invoices
     };
 
     res.status(200).json(response);
@@ -261,8 +262,7 @@ export const processTextFileERP = async (
       }
     });
 
-    // Function to identify missing invoice numbers
-    const findMissingInvoices = (invoices: string[]) => {
+    const findMissingInvoicesERP = (invoices: string[]) => {
       const missing = [];
       const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
       const numericInvoices = invoices.map((inv) =>
@@ -274,7 +274,7 @@ export const processTextFileERP = async (
         const prev = numericInvoices[i - 1];
         const curr = numericInvoices[i];
         for (let j = prev + 1; j < curr; j++) {
-          missing.push(prefix + j.toString().padStart(4, "0"));
+          missing.push(prefix + j.toString().padStart(8, "0"));
         }
       }
       return missing;
@@ -282,8 +282,7 @@ export const processTextFileERP = async (
 
     // Convert the Set to an array and sort it
     const sortedInvoices = Array.from(transactionSet).sort();
-    const missingInvoices = findMissingInvoices(sortedInvoices);
-
+    const missingInvoices = findMissingInvoicesERP(sortedInvoices);
     // Calculate the total sum
     const grandTotal = vatable + vatExempt + zeroRated + government + vat12;
     const netTotal = vatable + vatExempt + zeroRated + government;
@@ -309,11 +308,12 @@ export const processTextFileERP = async (
       zeroRated: zeroRated.toFixed(2),
       government: government.toFixed(2),
       vat12: vat12.toFixed(2),
-      netTotal: netTotal.toFixed(2), // Exclude VAT 12%
-      grandTotal: grandTotal.toFixed(2), // Include the total sum
-      negativeCount: negativeValues.length, // Count of negative values
-      negativeTotal: negativeSum, // Sum of negative values
-      missingInvoices, // List of missing invoice numbers
+      netTotal: netTotal.toFixed(2), 
+      grandTotal: grandTotal.toFixed(2), 
+      negativeCount: negativeValues.length, 
+      negativeTotal: negativeSum, 
+      missingInvoices, 
+      missingInvoiceCount: missingInvoices.length, 
     };
 
     // Send the response
