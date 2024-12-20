@@ -49,9 +49,9 @@ const port = process.env.PORT || 3000;
 app.use((0, cors_1.default)());
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
-    res.send("Express + TypeScript Server");
+    res.redirect("/docs");
 });
-app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_output_json_1.default));
+app.use("/docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_output_json_1.default));
 app.use("/", routes_1.routes);
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);
