@@ -298,7 +298,6 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
         res.status(200).json(response);
     }
     catch (error) {
-        console.error("Error processing file:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
