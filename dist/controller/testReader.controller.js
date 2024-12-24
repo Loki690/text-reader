@@ -8,8 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processTextFileERP = exports.processTextFile = void 0;
+exports.getEsales = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
+const esales_model_1 = __importDefault(require("../model/esales.model"));
 const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Request file:", req.file);
     console.log("Request body:", req.body);
@@ -97,24 +101,26 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
             }
         });
         // Function to identify missing invoice numbers
-        const findMissingInvoices = (invoices) => {
-            const missing = [];
-            const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
-            const numericInvoices = invoices.map((inv) => parseInt(inv.split("-").pop(), 10));
-            numericInvoices.sort((a, b) => a - b);
-            for (let i = 1; i < numericInvoices.length; i++) {
-                const prev = numericInvoices[i - 1];
-                const curr = numericInvoices[i];
-                for (let j = prev + 1; j < curr; j++) {
-                    missing.push(prefix + j.toString().padStart(4, "0"));
-                }
-            }
-            return missing;
-        };
+        // const findMissingInvoices = (invoices: string[]) => {
+        //   const missing = [];
+        //   const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+        //   const numericInvoices = invoices.map((inv) =>
+        //     parseInt(inv.split("-").pop()!, 10)
+        //   );
+        //   numericInvoices.sort((a, b) => a - b);
+        //   for (let i = 1; i < numericInvoices.length; i++) {
+        //     const prev = numericInvoices[i - 1];
+        //     const curr = numericInvoices[i];
+        //     for (let j = prev + 1; j < curr; j++) {
+        //       missing.push(prefix + j.toString().padStart(4, "0"));
+        //     }
+        //   }
+        //   return missing;
+        // };
         // Convert the Set to an array and sort it
         const sortedInvoices = Array.from(transactionSet).sort();
         // Identify missing invoice numbers
-        const missingInvoices = findMissingInvoices(sortedInvoices);
+        // const missingInvoices = findMissingInvoices(sortedInvoices);
         // Calculate the total sum of negative values
         const negativeSum = negativeValues
             .reduce((sum, value) => sum + value, 0)
@@ -136,8 +142,8 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
             total: (vatable + vatExempt + zeroRated + government + vat12).toFixed(2),
             negativeCount: negativeValues.length, // Count of negative values
             negativeTotal: negativeSum, // Sum of negative values,
-            missingInvoices, // List of missing invoice numbers
-            missingInvoiceCount: missingInvoices.length, // Count of missing invoices
+            // missingInvoices, // List of missing invoice numbers
+            // missingInvoiceCount: missingInvoices.length, // Count of missing invoices
         };
         res.status(200).json(response);
     }
@@ -247,23 +253,25 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
                     vat12 += value;
             }
         });
-        const findMissingInvoicesERP = (invoices) => {
-            const missing = [];
-            const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
-            const numericInvoices = invoices.map((inv) => parseInt(inv.split("-").pop(), 10));
-            numericInvoices.sort((a, b) => a - b);
-            for (let i = 1; i < numericInvoices.length; i++) {
-                const prev = numericInvoices[i - 1];
-                const curr = numericInvoices[i];
-                for (let j = prev + 1; j < curr; j++) {
-                    missing.push(prefix + j.toString().padStart(8, "0"));
-                }
-            }
-            return missing;
-        };
+        // const findMissingInvoicesERP = (invoices: string[]) => {
+        //   const missing = [];
+        //   const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+        //   const numericInvoices = invoices.map((inv) =>
+        //     parseInt(inv.split("-").pop()!, 10)
+        //   );
+        //   numericInvoices.sort((a, b) => a - b);
+        //   for (let i = 1; i < numericInvoices.length; i++) {
+        //     const prev = numericInvoices[i - 1];
+        //     const curr = numericInvoices[i];
+        //     for (let j = prev + 1; j < curr; j++) {
+        //       missing.push(prefix + j.toString().padStart(8, "0"));
+        //     }
+        //   }
+        //   return missing;
+        // };
         // Convert the Set to an array and sort it
         const sortedInvoices = Array.from(transactionSet).sort();
-        const missingInvoices = findMissingInvoicesERP(sortedInvoices);
+        // const missingInvoices = findMissingInvoicesERP(sortedInvoices);
         // Calculate the total sum
         const grandTotal = vatable + vatExempt + zeroRated + government + vat12;
         const netTotal = vatable + vatExempt + zeroRated + government;
@@ -291,14 +299,62 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
             grandTotal: grandTotal.toFixed(2),
             negativeCount: negativeValues.length,
             negativeTotal: negativeSum,
-            missingInvoices,
-            missingInvoiceCount: missingInvoices.length,
+            // missingInvoices,
+            // missingInvoiceCount: missingInvoices.length,
         };
         // Send the response
         res.status(200).json(response);
     }
     catch (error) {
+        console.error("Error processing file:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
 exports.processTextFileERP = processTextFileERP;
+const createEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        let esalesData = req.body;
+        const esalesDataDate = esalesData.tableRows[0].textValue;
+        const esalesDataBranch = esalesData.tableRows[1].textValue;
+        esalesData.branch = esalesDataBranch;
+        esalesData.date = esalesDataDate;
+        // Check for duplicate branch and date
+        const existingEsales = yield esales_model_1.default.findOne({
+            branch: esalesDataBranch,
+            date: esalesDataDate,
+        });
+        if (existingEsales) {
+            res.status(400).json({
+                success: false,
+                message: "Duplicate entry: eSales data for this branch and date already exists",
+            });
+            return;
+        }
+        const newEsales = new esales_model_1.default(esalesData);
+        yield newEsales.save();
+        res.status(200).json({
+            success: true,
+            data: newEsales,
+            message: "eSales data saved successfully",
+        });
+    }
+    catch (error) {
+        console.error("Error saving esales data:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+exports.createEsales = createEsales;
+const getEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const esalesData = yield esales_model_1.default.find();
+        res.status(200).json({
+            success: true,
+            data: esalesData,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching esales data:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+exports.getEsales = getEsales;

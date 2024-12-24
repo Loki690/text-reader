@@ -13,3 +13,5 @@ const upload2 = (0, multer_1.default)({ storage });
 exports.textReaderRouter = (0, express_1.Router)();
 exports.textReaderRouter.post('/text-read', upload1.single('file'), testReader_controller_1.processTextFile);
 exports.textReaderRouter.post('/text-read-erp', upload2.single('file'), testReader_controller_1.processTextFileERP);
+exports.textReaderRouter.post('/create', testReader_controller_1.createEsales);
+exports.textReaderRouter.get('/get-all', testReader_controller_1.getEsales);

@@ -32,36 +32,18 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const bodyParser = __importStar(require("body-parser"));
-const routes_1 = require("./routes");
-const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
-const swagger_output_json_1 = __importDefault(require("./swagger_output.json"));
-const cors_1 = __importDefault(require("cors"));
-const mongoose_1 = __importDefault(require("mongoose"));
-dotenv_1.default.config();
-const app = (0, express_1.default)();
-const port = process.env.PORT;
-const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/express-mongo";
-mongoose_1.default.connect(mongoUri, {})
-    .then(() => {
-    console.log("Connected to MongoDB");
-})
-    .catch((error) => {
-    console.error("Error connecting to MongoDB:", error);
+const mongoose_1 = __importStar(require("mongoose"));
+const UserSchema = new mongoose_1.Schema({
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: false, unique: true },
+    password: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 });
-app.use((0, cors_1.default)());
-app.use(bodyParser.json());
-app.get("/", (req, res) => {
-    res.redirect("/docs");
+UserSchema.pre('save', function (next) {
+    this.updatedAt = new Date();
+    next();
 });
-app.use("/docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_output_json_1.default));
-app.use("/", routes_1.routes);
-app.listen(port, () => {
-    console.log(`[server]: Server is running at http://localhost:${port}`);
-});
+const User = mongoose_1.default.model('User', UserSchema);
+exports.default = User;
