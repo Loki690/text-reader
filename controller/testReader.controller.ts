@@ -6,8 +6,8 @@ export const processTextFile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  console.log("Request file:", req.file);
-  console.log("Request body:", req.body);
+  // console.log("Request file:", req.file);
+  // console.log("Request body:", req.body);
 
   if (!req.file) {
     console.error("No file uploaded");
@@ -24,16 +24,17 @@ export const processTextFile = async (
     let zeroRated = 0;
     let government = 0;
     let vat12 = 0;
-    let dateFrom = ""; // Date of the first POS Invoice
-    let dateTo = ""; // Date of the last POS Invoice
-    let currentInvoiceDate = ""; // Temporary holder for the current invoice's date
+    let dateFrom = ""; 
+    let dateTo = ""; 
+    let currentInvoiceDate = ""; 
 
-    const transactionSet = new Set<string>(); // Unique INV# values
-    const duplicateINVSet = new Set<string>(); // Duplicates tracking
-    const transactionMap = new Map<string, number>(); // INV# to count occurrences
-    let branchName = null; // To store the branch name
+    const transactionSet = new Set<string>();
+    const duplicateINVSet = new Set<string>(); 
+    const transactionMap = new Map<string, number>(); 
+    let branchName = null; 
+    let min = null;
 
-    const negativeValues: number[] = []; // Store negative monetary values
+    const negativeValues: number[] = []; 
 
     lines.forEach((line) => {
       // Extract the Branch name
@@ -47,6 +48,13 @@ export const processTextFile = async (
         const match = line.match(/Date:\s*(\S+)/i);
         if (match && match[1]) {
           currentInvoiceDate = match[1]; // Temporarily store the extracted date
+        }
+      }
+
+      if (line.includes("MIN:")) {
+        const match = line.match(/MIN:\s*(\S+)/i);
+        if (match && match[1]) {
+          min = match[1]; // Temporarily store the extracted date
         }
       }
 
@@ -128,6 +136,7 @@ export const processTextFile = async (
     const response = {
       date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
       branch: branchName || "N/A",
+      min: min || "N/A",
       transactions: transactionSet.size,
       beginningInvoice: sortedInvoices[0] || null,
       lastInvoice: sortedInvoices[sortedInvoices.length - 1] || null,
@@ -334,14 +343,17 @@ export const createEsales = async (
 
     const esalesDataDate = esalesData.tableRows[0].textValue;
     const esalesDataBranch = esalesData.tableRows[1].textValue;
+    const esalesDataMin = esalesData.tableRows[2].textValue;
 
     esalesData.branch = esalesDataBranch;
     esalesData.date = esalesDataDate;
+    esalesData.min = esalesDataMin;
 
     // Check for duplicate branch and date
     const existingEsales = await Esales.findOne({
       branch: esalesDataBranch,
       date: esalesDataDate,
+      min: esalesDataMin,
     });
 
     if (existingEsales) {

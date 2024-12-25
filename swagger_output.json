@@ -115,6 +115,9 @@
                   },
                   "date": {
                     "example": "any"
+                  },
+                  "min": {
+                    "example": "any"
                   }
                 }
               }

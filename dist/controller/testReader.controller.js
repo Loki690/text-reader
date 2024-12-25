@@ -15,8 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEsales = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
 const esales_model_1 = __importDefault(require("../model/esales.model"));
 const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("Request file:", req.file);
-    console.log("Request body:", req.body);
+    // console.log("Request file:", req.file);
+    // console.log("Request body:", req.body);
     if (!req.file) {
         console.error("No file uploaded");
         res.status(400).json({ error: "No file uploaded" });
@@ -30,14 +30,15 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
         let zeroRated = 0;
         let government = 0;
         let vat12 = 0;
-        let dateFrom = ""; // Date of the first POS Invoice
-        let dateTo = ""; // Date of the last POS Invoice
-        let currentInvoiceDate = ""; // Temporary holder for the current invoice's date
-        const transactionSet = new Set(); // Unique INV# values
-        const duplicateINVSet = new Set(); // Duplicates tracking
-        const transactionMap = new Map(); // INV# to count occurrences
-        let branchName = null; // To store the branch name
-        const negativeValues = []; // Store negative monetary values
+        let dateFrom = "";
+        let dateTo = "";
+        let currentInvoiceDate = "";
+        const transactionSet = new Set();
+        const duplicateINVSet = new Set();
+        const transactionMap = new Map();
+        let branchName = null;
+        let min = null;
+        const negativeValues = [];
         lines.forEach((line) => {
             // Extract the Branch name
             if (line.includes("Branch:")) {
@@ -50,6 +51,12 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
                 const match = line.match(/Date:\s*(\S+)/i);
                 if (match && match[1]) {
                     currentInvoiceDate = match[1]; // Temporarily store the extracted date
+                }
+            }
+            if (line.includes("MIN:")) {
+                const match = line.match(/MIN:\s*(\S+)/i);
+                if (match && match[1]) {
+                    min = match[1]; // Temporarily store the extracted date
                 }
             }
             // Extract and store unique INV# values
@@ -129,6 +136,7 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
         const response = {
             date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
             branch: branchName || "N/A",
+            min: min || "N/A",
             transactions: transactionSet.size,
             beginningInvoice: sortedInvoices[0] || null,
             lastInvoice: sortedInvoices[sortedInvoices.length - 1] || null,
@@ -316,12 +324,15 @@ const createEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         let esalesData = req.body;
         const esalesDataDate = esalesData.tableRows[0].textValue;
         const esalesDataBranch = esalesData.tableRows[1].textValue;
+        const esalesDataMin = esalesData.tableRows[2].textValue;
         esalesData.branch = esalesDataBranch;
         esalesData.date = esalesDataDate;
+        esalesData.min = esalesDataMin;
         // Check for duplicate branch and date
         const existingEsales = yield esales_model_1.default.findOne({
             branch: esalesDataBranch,
             date: esalesDataDate,
+            min: esalesDataMin,
         });
         if (existingEsales) {
             res.status(400).json({

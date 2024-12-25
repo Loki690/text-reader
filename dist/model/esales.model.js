@@ -43,6 +43,7 @@ const TableRowSchema = new mongoose_1.Schema({
 const EsalesSchema = new mongoose_1.Schema({
     branch: { type: String, required: false },
     date: { type: String, required: false },
+    min: { type: String, required: false },
     tableRows: { type: [TableRowSchema], required: true },
 });
 const Esales = mongoose_1.default.model("Esales", EsalesSchema);

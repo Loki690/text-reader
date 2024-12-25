@@ -21,6 +21,7 @@ const TableRowSchema: Schema = new Schema({
 const EsalesSchema: Schema = new Schema({
     branch: { type: String, required: false },
     date: { type: String, required: false },
+    min: { type: String, required: false },
     tableRows: { type: [TableRowSchema], required: true },
 });
 
