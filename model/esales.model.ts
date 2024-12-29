@@ -8,6 +8,9 @@ interface TableRow {
 }
 
 export interface Esales extends Document {
+    branch?: string;
+    date?: string;
+    min?: string;
     tableRows: TableRow[];
 }
 
