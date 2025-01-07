@@ -1,6 +1,7 @@
 import exp from "constants";
 import { Request, Response } from "express";
 import Esales from "../model/esales.model";
+import EsalesErp from "../model/esales-erp.model";
 
 export const processTextFile = async (
   req: Request,
@@ -165,7 +166,7 @@ export const processTextFileERP = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  console.log("Request file:", req.file);
+  // console.log("Request file:", req.file);
 
   if (!req.file) {
     console.error("No file uploaded");
@@ -180,6 +181,7 @@ export const processTextFileERP = async (
     // Initialize variables
     let branchName = "";
     let posProfile = "";
+    let min = "";
     let posInvoiceCount = 0;
     let vatable = 0;
     let vatExempt = 0;
@@ -210,10 +212,10 @@ export const processTextFileERP = async (
         posProfile = trimmedLine.replace("POS Profile:", "").trim();
       }
 
-      // Count POS Invoice occurrences
-      if (trimmedLine.includes("POS Invoice:")) {
-        posInvoiceCount += 1;
+      if (trimmedLine.includes("MIN:")) {
+        min = trimmedLine.replace("MIN:", "").trim();
       }
+
       // Extract Date
       if (trimmedLine.includes("Date:")) {
         const match = trimmedLine.match(/Date:\s*(\d{4}-\d{2}-\d{2})/i); // Look for "Date: YYYY-MM-DD"
@@ -272,27 +274,27 @@ export const processTextFileERP = async (
       }
     });
 
-    // const findMissingInvoicesERP = (invoices: string[]) => {
-    //   const missing = [];
-    //   const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
-    //   const numericInvoices = invoices.map((inv) =>
-    //     parseInt(inv.split("-").pop()!, 10)
-    //   );
-    //   numericInvoices.sort((a, b) => a - b);
+    const findMissingInvoicesERP = (invoices: string[]) => {
+      const missing = [];
+      const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+      const numericInvoices = invoices.map((inv) =>
+        parseInt(inv.split("-").pop()!, 10)
+      );
+      numericInvoices.sort((a, b) => a - b);
 
-    //   for (let i = 1; i < numericInvoices.length; i++) {
-    //     const prev = numericInvoices[i - 1];
-    //     const curr = numericInvoices[i];
-    //     for (let j = prev + 1; j < curr; j++) {
-    //       missing.push(prefix + j.toString().padStart(8, "0"));
-    //     }
-    //   }
-    //   return missing;
-    // };
+      for (let i = 1; i < numericInvoices.length; i++) {
+        const prev = numericInvoices[i - 1];
+        const curr = numericInvoices[i];
+        for (let j = prev + 1; j < curr; j++) {
+          missing.push(prefix + j.toString().padStart(8, "0"));
+        }
+      }
+      return missing;
+    };
 
     // Convert the Set to an array and sort it
     const sortedInvoices = Array.from(transactionSet).sort();
-    // const missingInvoices = findMissingInvoicesERP(sortedInvoices);
+    const missingInvoices = findMissingInvoicesERP(sortedInvoices);
     // Calculate the total sum
     const grandTotal = vatable + vatExempt + zeroRated + government + vat12;
     const netTotal = vatable + vatExempt + zeroRated + government;
@@ -307,6 +309,7 @@ export const processTextFileERP = async (
       date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
       branchName: branchName || "N/A",
       posProfile: posProfile || "N/A",
+      min: min || "N/A",
       posInvoiceCount,
       transactions: transactionSet.size,
       beginningInvoice: sortedInvoices[0] || null,
@@ -322,8 +325,8 @@ export const processTextFileERP = async (
       grandTotal: grandTotal.toFixed(2),
       negativeCount: negativeValues.length,
       negativeTotal: negativeSum,
-      // missingInvoices,
-      // missingInvoiceCount: missingInvoices.length,
+      missingInvoices,
+      missingInvoiceCount: missingInvoices.length,
     };
 
     // Send the response
@@ -378,12 +381,75 @@ export const createEsales = async (
   }
 };
 
+
+export const createEsalesERP = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    let esalesData = req.body;
+
+    const esalesDataDate = esalesData.tableRows[0].textValue;
+    const esalesDataBranch = esalesData.tableRows[1].textValue;
+    const esalesDataPOSProfile = esalesData.tableRows[2].textValue;
+    const esalesDataMin = esalesData.tableRows[3].textValue;
+
+    esalesData.branch = esalesDataBranch;
+    esalesData.date = esalesDataDate;
+    esalesData.posProfile = esalesDataPOSProfile;
+    esalesData.min = esalesDataMin;
+
+    // Check for duplicate branch and date
+    const existingEsales = await EsalesErp.findOne({
+      branch: esalesDataBranch,
+      date: esalesDataDate,
+      min: esalesDataMin,
+    });
+
+    if (existingEsales) {
+      res.status(400).json({
+        success: false,
+        message:
+          "Duplicate entry: eSales data for this branch and date already exists",
+      });
+      return;
+    }
+
+    const newEsales = new EsalesErp(esalesData);
+    await newEsales.save();
+    res.status(200).json({
+      success: true,
+      data: newEsales,
+      message: "eSales data saved successfully",
+    });
+  } catch (error) {
+    console.error("Error saving esales data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export const getEsales = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const esalesData = await Esales.find();
+    res.status(200).json({
+      success: true,
+      data: esalesData,
+    });
+  } catch (error) {
+    console.error("Error fetching esales data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getEsalesErp = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const esalesData = await EsalesErp.find();
     res.status(200).json({
       success: true,
       data: esalesData,
