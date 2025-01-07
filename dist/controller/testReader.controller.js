@@ -12,8 +12,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEsales = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
+exports.getEsalesErp = exports.getEsales = exports.createEsalesERP = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
 const esales_model_1 = __importDefault(require("../model/esales.model"));
+const esales_erp_model_1 = __importDefault(require("../model/esales-erp.model"));
 const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // console.log("Request file:", req.file);
     // console.log("Request body:", req.body);
@@ -162,7 +163,7 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
 });
 exports.processTextFile = processTextFile;
 const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("Request file:", req.file);
+    // console.log("Request file:", req.file);
     if (!req.file) {
         console.error("No file uploaded");
         res.status(400).json({ error: "No file uploaded" });
@@ -174,6 +175,7 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
         // Initialize variables
         let branchName = "";
         let posProfile = "";
+        let min = "";
         let posInvoiceCount = 0;
         let vatable = 0;
         let vatExempt = 0;
@@ -198,9 +200,8 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
             if (trimmedLine.includes("POS Profile:")) {
                 posProfile = trimmedLine.replace("POS Profile:", "").trim();
             }
-            // Count POS Invoice occurrences
-            if (trimmedLine.includes("POS Invoice:")) {
-                posInvoiceCount += 1;
+            if (trimmedLine.includes("MIN:")) {
+                min = trimmedLine.replace("MIN:", "").trim();
             }
             // Extract Date
             if (trimmedLine.includes("Date:")) {
@@ -261,25 +262,23 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
                     vat12 += value;
             }
         });
-        // const findMissingInvoicesERP = (invoices: string[]) => {
-        //   const missing = [];
-        //   const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
-        //   const numericInvoices = invoices.map((inv) =>
-        //     parseInt(inv.split("-").pop()!, 10)
-        //   );
-        //   numericInvoices.sort((a, b) => a - b);
-        //   for (let i = 1; i < numericInvoices.length; i++) {
-        //     const prev = numericInvoices[i - 1];
-        //     const curr = numericInvoices[i];
-        //     for (let j = prev + 1; j < curr; j++) {
-        //       missing.push(prefix + j.toString().padStart(8, "0"));
-        //     }
-        //   }
-        //   return missing;
-        // };
+        const findMissingInvoicesERP = (invoices) => {
+            const missing = [];
+            const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
+            const numericInvoices = invoices.map((inv) => parseInt(inv.split("-").pop(), 10));
+            numericInvoices.sort((a, b) => a - b);
+            for (let i = 1; i < numericInvoices.length; i++) {
+                const prev = numericInvoices[i - 1];
+                const curr = numericInvoices[i];
+                for (let j = prev + 1; j < curr; j++) {
+                    missing.push(prefix + j.toString().padStart(8, "0"));
+                }
+            }
+            return missing;
+        };
         // Convert the Set to an array and sort it
         const sortedInvoices = Array.from(transactionSet).sort();
-        // const missingInvoices = findMissingInvoicesERP(sortedInvoices);
+        const missingInvoices = findMissingInvoicesERP(sortedInvoices);
         // Calculate the total sum
         const grandTotal = vatable + vatExempt + zeroRated + government + vat12;
         const netTotal = vatable + vatExempt + zeroRated + government;
@@ -292,6 +291,7 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
             date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : "N/A",
             branchName: branchName || "N/A",
             posProfile: posProfile || "N/A",
+            min: min || "N/A",
             posInvoiceCount,
             transactions: transactionSet.size,
             beginningInvoice: sortedInvoices[0] || null,
@@ -307,8 +307,8 @@ const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, funct
             grandTotal: grandTotal.toFixed(2),
             negativeCount: negativeValues.length,
             negativeTotal: negativeSum,
-            // missingInvoices,
-            // missingInvoiceCount: missingInvoices.length,
+            missingInvoices,
+            missingInvoiceCount: missingInvoices.length,
         };
         // Send the response
         res.status(200).json(response);
@@ -355,6 +355,44 @@ const createEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.createEsales = createEsales;
+const createEsalesERP = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        let esalesData = req.body;
+        const esalesDataDate = esalesData.tableRows[0].textValue;
+        const esalesDataBranch = esalesData.tableRows[1].textValue;
+        const esalesDataPOSProfile = esalesData.tableRows[2].textValue;
+        const esalesDataMin = esalesData.tableRows[3].textValue;
+        esalesData.branch = esalesDataBranch;
+        esalesData.date = esalesDataDate;
+        esalesData.posProfile = esalesDataPOSProfile;
+        esalesData.min = esalesDataMin;
+        // Check for duplicate branch and date
+        const existingEsales = yield esales_erp_model_1.default.findOne({
+            branch: esalesDataBranch,
+            date: esalesDataDate,
+            min: esalesDataMin,
+        });
+        if (existingEsales) {
+            res.status(400).json({
+                success: false,
+                message: "Duplicate entry: eSales data for this branch and date already exists",
+            });
+            return;
+        }
+        const newEsales = new esales_erp_model_1.default(esalesData);
+        yield newEsales.save();
+        res.status(200).json({
+            success: true,
+            data: newEsales,
+            message: "eSales data saved successfully",
+        });
+    }
+    catch (error) {
+        console.error("Error saving esales data:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+exports.createEsalesERP = createEsalesERP;
 const getEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const esalesData = yield esales_model_1.default.find();
@@ -369,3 +407,17 @@ const getEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.getEsales = getEsales;
+const getEsalesErp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const esalesData = yield esales_erp_model_1.default.find();
+        res.status(200).json({
+            success: true,
+            data: esalesData,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching esales data:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+exports.getEsalesErp = getEsalesErp;
