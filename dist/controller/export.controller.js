@@ -83,6 +83,8 @@ const exportEsalesErp = (req, res) => __awaiter(void 0, void 0, void 0, function
             "Zero Rated Sales",
             "Government",
             "Output Tax",
+            "Net Total",
+            "Grand Total"
         ];
         // Define the static headers
         const staticHeaders = ["Branch", "Date", "MIN"];

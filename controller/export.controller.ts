@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { Parser } from 'json2csv';
 import Esales from '../model/esales.model';
@@ -81,6 +80,8 @@ export const exportEsalesErp = async (req: Request, res: Response) => {
             "Zero Rated Sales",
             "Government",
             "Output Tax",
+            "Net Total",
+            "Grand Total"
         ];
 
         // Define the static headers
