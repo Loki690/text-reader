@@ -8,7 +8,7 @@ import {
   processTextFile,
   processTextFileERP,
 } from "../controller/testReader.controller";
-import { exportEsales } from "../controller/export.controller";
+import { exportEsales, exportEsalesErp } from "../controller/export.controller";
 
 const storage = multer.memoryStorage();
 const upload1 = multer({ storage });
@@ -26,3 +26,4 @@ textReaderRouter.post("/createErp", createEsalesERP);
 textReaderRouter.get("/get-all", getEsales);
 textReaderRouter.get("/get-all-erp", getEsalesErp);
 textReaderRouter.get("/export", exportEsales);
+textReaderRouter.get("/exportEsalesErp", exportEsalesErp);

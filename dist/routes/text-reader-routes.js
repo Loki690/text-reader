@@ -19,3 +19,4 @@ exports.textReaderRouter.post("/createErp", testReader_controller_1.createEsales
 exports.textReaderRouter.get("/get-all", testReader_controller_1.getEsales);
 exports.textReaderRouter.get("/get-all-erp", testReader_controller_1.getEsalesErp);
 exports.textReaderRouter.get("/export", export_controller_1.exportEsales);
+exports.textReaderRouter.get("/exportEsalesErp", export_controller_1.exportEsalesErp);

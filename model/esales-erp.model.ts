@@ -27,7 +27,6 @@ const EsalesSchemaERP: Schema = new Schema({
     date: { type: String, required: false },
     posProfile: { type: String, required: false },
     min: { type: String, required: false },
-
     tableRows: { type: [TableRowSchema], required: true },
 });
 

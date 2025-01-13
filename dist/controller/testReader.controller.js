@@ -163,7 +163,7 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
 });
 exports.processTextFile = processTextFile;
 const processTextFileERP = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // console.log("Request file:", req.file);
+    console.log("Request file:", req.file);
     if (!req.file) {
         console.error("No file uploaded");
         res.status(400).json({ error: "No file uploaded" });

@@ -166,7 +166,7 @@ export const processTextFileERP = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  // console.log("Request file:", req.file);
+  console.log("Request file:", req.file);
 
   if (!req.file) {
     console.error("No file uploaded");
