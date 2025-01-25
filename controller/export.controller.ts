@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Parser } from 'json2csv';
 import Esales from '../model/esales.model';
 import EsalesErp from '../model/esales-erp.model';
+import { TransactionsModel } from '../model/esales_trans.model';
 
 export const exportEsales = async (req: Request, res: Response) => {
     try {
@@ -132,3 +133,54 @@ export const exportEsalesErp = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Failed to export eSales data", error: errorMessage });
     }
 };
+
+
+export const export_transactions = async (req: Request, res:Response) => {
+
+try {
+    // Fetch all data from MongoDB
+    const transactionsData = await TransactionsModel.find();
+
+    // Define the headers
+    const fields = [
+        "id",
+        "branch",
+        "INV",
+        "date",
+        "VATable",
+        "VatExempt",
+        "ZeroRated",
+        "Government",
+        "Vat12",
+        "__v"
+    ];
+
+    // Map the data to the required CSV format
+    const csvData = transactionsData.map((data) => ({
+        id: data._id,
+        branch: data.branch,
+        INV: data.INV,
+        date: data.date,
+        VATable: data.VATable,
+        VatExempt: data.VatExempt,
+        ZeroRated: data.ZeroRated,
+        Government: data.Government,
+        Vat12: data.Vat12,
+        __v: data.__v
+    }));
+
+    // Convert to CSV
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(csvData);
+
+    // Send the CSV file in the response
+    res.header("Content-Type", "text/csv");
+    res.attachment("transactions.csv");
+    res.send(csv);
+} catch (error) {
+    console.error("Error exporting transactions data:", error);
+    const errorMessage = (error as Error).message;
+    res.status(500).json({ message: "Failed to export transactions data", error: errorMessage });
+}
+
+}

@@ -3,7 +3,7 @@ import { getUser, createUser, updateUser, deleteUser } from '../controller/user.
 
 export const userRouter = Router();
 
-userRouter.get('/user/:id', getUser);
-userRouter.post('/user', createUser);
-userRouter.put('/user/:id', updateUser);
-userRouter.delete('/user/:id', deleteUser);
+userRouter.get('/:id', getUser);
+userRouter.post('/create', createUser);
+userRouter.put('/:id', updateUser);
+userRouter.delete('/:id', deleteUser);
