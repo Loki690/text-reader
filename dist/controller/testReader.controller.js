@@ -12,12 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEsalesErp = exports.getEsales = exports.createEsalesERP = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
+exports.processTextFileV2 = exports.getEsalesErp = exports.getEsales = exports.createEsalesERP = exports.createEsales = exports.processTextFileERP = exports.processTextFile = void 0;
 const esales_model_1 = __importDefault(require("../model/esales.model"));
 const esales_erp_model_1 = __importDefault(require("../model/esales-erp.model"));
 const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // console.log("Request file:", req.file);
-    // console.log("Request body:", req.body);
     if (!req.file) {
         console.error("No file uploaded");
         res.status(400).json({ error: "No file uploaded" });
@@ -26,6 +24,7 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
     try {
         const fileContent = req.file.buffer.toString("utf8");
         const lines = fileContent.split("\n");
+        console.log("File:", req.file.originalname);
         let vatable = 0;
         let vatExempt = 0;
         let zeroRated = 0;
@@ -48,37 +47,40 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
                     branchName = match[1];
                 }
             }
+            // Extract the Date
             if (line.includes("Date:")) {
                 const match = line.match(/Date:\s*(\S+)/i);
                 if (match && match[1]) {
                     currentInvoiceDate = match[1]; // Temporarily store the extracted date
                 }
             }
+            // Extract the MIN
             if (line.includes("MIN:")) {
                 const match = line.match(/MIN:\s*(\S+)/i);
                 if (match && match[1]) {
-                    min = match[1]; // Temporarily store the extracted date
+                    min = match[1];
                 }
             }
-            // Extract and store unique INV# values
+            // Extract and process INV# values
             if (line.includes("INV#")) {
                 const match = line.match(/INV#\s*[:\-]?\s*(\S+)/i);
                 if (match && match[1]) {
                     const invoice = match[1];
-                    if (transactionSet.has(invoice)) {
-                        duplicateINVSet.add(invoice); // Record duplicate invoice
+                    // Add all invoices (including duplicates) to the transactionSet
+                    transactionSet.add(invoice);
+                    // Record duplicate invoices if they are already in the transactionMap
+                    if (transactionMap.has(invoice)) {
+                        duplicateINVSet.add(invoice);
                     }
-                    else {
-                        transactionSet.add(invoice); // Add to the unique set
-                    }
+                    // Update the map to track occurrences
+                    transactionMap.set(invoice, (transactionMap.get(invoice) || 0) + 1);
+                    // Update date range
                     if (!dateFrom || new Date(currentInvoiceDate) < new Date(dateFrom)) {
                         dateFrom = currentInvoiceDate;
                     }
                     if (!dateTo || new Date(currentInvoiceDate) > new Date(dateTo)) {
                         dateTo = currentInvoiceDate;
                     }
-                    // Update the map to track occurrences
-                    transactionMap.set(invoice, (transactionMap.get(invoice) || 0) + 1);
                 }
             }
             // Extract monetary values
@@ -108,27 +110,6 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
                     vat12 += value;
             }
         });
-        // Function to identify missing invoice numbers
-        // const findMissingInvoices = (invoices: string[]) => {
-        //   const missing = [];
-        //   const prefix = invoices[0].slice(0, invoices[0].lastIndexOf("-") + 1);
-        //   const numericInvoices = invoices.map((inv) =>
-        //     parseInt(inv.split("-").pop()!, 10)
-        //   );
-        //   numericInvoices.sort((a, b) => a - b);
-        //   for (let i = 1; i < numericInvoices.length; i++) {
-        //     const prev = numericInvoices[i - 1];
-        //     const curr = numericInvoices[i];
-        //     for (let j = prev + 1; j < curr; j++) {
-        //       missing.push(prefix + j.toString().padStart(4, "0"));
-        //     }
-        //   }
-        //   return missing;
-        // };
-        // Convert the Set to an array and sort it
-        const sortedInvoices = Array.from(transactionSet).sort();
-        // Identify missing invoice numbers
-        // const missingInvoices = findMissingInvoices(sortedInvoices);
         // Calculate the total sum of negative values
         const negativeSum = negativeValues
             .reduce((sum, value) => sum + value, 0)
@@ -139,8 +120,8 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
             branch: branchName || "N/A",
             min: min || "N/A",
             transactions: transactionSet.size,
-            beginningInvoice: sortedInvoices[0] || null,
-            lastInvoice: sortedInvoices[sortedInvoices.length - 1] || null,
+            beginningInvoice: Array.from(transactionSet).sort()[0] || null,
+            lastInvoice: Array.from(transactionSet).sort().slice(-1)[0] || null,
             duplicateInvoices: Array.from(duplicateINVSet), // List of duplicates
             duplicateCount: duplicateINVSet.size, // Number of duplicates
             vatable: vatable.toFixed(2),
@@ -150,9 +131,7 @@ const processTextFile = (req, res) => __awaiter(void 0, void 0, void 0, function
             vat12: vat12.toFixed(2),
             total: (vatable + vatExempt + zeroRated + government + vat12).toFixed(2),
             negativeCount: negativeValues.length, // Count of negative values
-            negativeTotal: negativeSum, // Sum of negative values,
-            // missingInvoices, // List of missing invoice numbers
-            // missingInvoiceCount: missingInvoices.length, // Count of missing invoices
+            negativeTotal: negativeSum, // Sum of negative values
         };
         res.status(200).json(response);
     }
@@ -322,6 +301,7 @@ exports.processTextFileERP = processTextFileERP;
 const createEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         let esalesData = req.body;
+        console.log("Request body:", esalesData);
         const esalesDataDate = esalesData.tableRows[0].textValue;
         const esalesDataBranch = esalesData.tableRows[1].textValue;
         const esalesDataMin = esalesData.tableRows[2].textValue;
@@ -342,6 +322,7 @@ const createEsales = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             return;
         }
         const newEsales = new esales_model_1.default(esalesData);
+        // const newTransactions = new TransactionsModel()
         yield newEsales.save();
         res.status(200).json({
             success: true,
@@ -421,3 +402,159 @@ const getEsalesErp = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.getEsalesErp = getEsalesErp;
+const processTextFileV2 = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!req.file) {
+        console.error('No file uploaded');
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+    }
+    try {
+        const fileContent = req.file.buffer.toString('utf8');
+        const lines = fileContent.split('\n');
+        let vatable = 0;
+        let vatExempt = 0;
+        let zeroRated = 0;
+        let government = 0;
+        let vat12 = 0;
+        let dateFrom = "";
+        let dateTo = "";
+        let currentInvoiceDate = "";
+        let currentInvoice = "";
+        let branchName = null;
+        let min = null;
+        const transactionSet = new Set();
+        const duplicateINVSet = new Set();
+        const transactionMap = new Map();
+        const negativeValues = [];
+        const transactionsData = [];
+        let currentTransaction = null;
+        lines.forEach((line) => {
+            // Extract the Branch name
+            if (line.includes('Branch:')) {
+                const match = line.match(/Branch:\s*(\S+)/i);
+                if (match && match[1]) {
+                    branchName = match[1];
+                }
+            }
+            if (line.includes('Date:')) {
+                const match = line.match(/Date:\s*(\S+)/i);
+                if (match && match[1]) {
+                    currentInvoiceDate = match[1]; // Temporarily store the extracted date
+                }
+            }
+            if (line.includes('MIN:')) {
+                const match = line.match(/MIN:\s*(\S+)/i);
+                if (match && match[1]) {
+                    min = match[1]; // Temporarily store the extracted date
+                }
+            }
+            // Extract and store unique INV# values
+            if (line.includes('INV#')) {
+                const match = line.match(/INV#\s*[:\-]?\s*(\S+)/i);
+                if (match && match[1]) {
+                    const invoice = match[1];
+                    if (transactionSet.has(invoice)) {
+                        duplicateINVSet.add(invoice); // Record duplicate invoice
+                    }
+                    else {
+                        transactionSet.add(invoice); // Add to the unique set
+                    }
+                    if (!dateFrom || new Date(currentInvoiceDate) < new Date(dateFrom)) {
+                        dateFrom = currentInvoiceDate;
+                    }
+                    if (!dateTo || new Date(currentInvoiceDate) > new Date(dateTo)) {
+                        dateTo = currentInvoiceDate;
+                    }
+                    // Update the map to track occurrences
+                    transactionMap.set(invoice, (transactionMap.get(invoice) || 0) + 1);
+                    // Start a new transaction entry
+                    currentTransaction = {
+                        branch: branchName,
+                        INV: invoice,
+                        date: currentInvoiceDate,
+                        VATable: 0,
+                        VatExempt: 0,
+                        ZeroRated: 0,
+                        Government: 0,
+                        Vat12: 0
+                    };
+                    transactionsData.push(currentTransaction);
+                }
+            }
+            // Extract monetary values and remove commas
+            const parts = line.trim().split(/\s+/);
+            const valueString = parts[parts.length - 1].replace(/,/g, '');
+            const value = parseFloat(valueString);
+            if (!isNaN(value) && value < 0) {
+                negativeValues.push(value); // Track negative values
+            }
+            if (line.includes('VATable')) {
+                if (!isNaN(value)) {
+                    vatable += value;
+                    if (currentTransaction)
+                        currentTransaction['VATable'] += value;
+                }
+            }
+            else if (line.includes('VAT Exempt')) {
+                if (!isNaN(value)) {
+                    vatExempt += value;
+                    if (currentTransaction)
+                        currentTransaction['VatExempt'] += value;
+                }
+            }
+            else if (line.includes('Zero Rated')) {
+                if (!isNaN(value)) {
+                    zeroRated += value;
+                    if (currentTransaction)
+                        currentTransaction['ZeroRated'] += value;
+                }
+            }
+            else if (line.includes('Government')) {
+                if (!isNaN(value)) {
+                    government += value;
+                    if (currentTransaction)
+                        currentTransaction['Government'] += value;
+                }
+            }
+            else if (line.includes('VAT 12%')) {
+                if (!isNaN(value)) {
+                    vat12 += value;
+                    if (currentTransaction)
+                        currentTransaction['Vat12'] += value;
+                }
+            }
+        });
+        // Convert the Set to an array and sort it
+        const sortedInvoices = Array.from(transactionSet).sort();
+        // Calculate the total sum of negative values
+        const negativeSum = negativeValues.reduce((sum, value) => sum + value, 0).toFixed(2);
+        // Prepare the response
+        const response = {
+            date: dateFrom && dateTo ? `${dateFrom} - ${dateTo}` : 'N/A',
+            branch: branchName || 'N/A',
+            min: min || 'N/A',
+            transactions: transactionSet.size,
+            beginningInvoice: sortedInvoices[0] || null,
+            lastInvoice: sortedInvoices[sortedInvoices.length - 1] || null,
+            duplicateInvoices: Array.from(duplicateINVSet), // List of duplicates
+            duplicateCount: duplicateINVSet.size, // Number of duplicates
+            vatable: vatable.toFixed(2),
+            vatExempt: vatExempt.toFixed(2),
+            zeroRated: zeroRated.toFixed(2),
+            government: government.toFixed(2),
+            vat12: vat12.toFixed(2),
+            total: (vatable + vatExempt + zeroRated + government + vat12).toFixed(2),
+            negativeCount: negativeValues.length, // Count of negative values
+            negativeTotal: negativeSum, // Sum of negative values
+            transactions_data: transactionsData,
+        };
+        // Save transactions_data to the database
+        // await TransactionsModel.insertMany(transactionsData);
+        res.status(200).json(response);
+    }
+    catch (error) {
+        console.error('Error processing file:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+exports.processTextFileV2 = processTextFileV2;
