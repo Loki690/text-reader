@@ -8,6 +8,7 @@ import {
   processTextFile,
   processTextFileERP,
   processTextFileV2,
+  deleteTransactions
 } from "../controller/testReader.controller";
 import { export_transactions, exportEsales, exportEsalesErp } from "../controller/export.controller";
 
@@ -29,3 +30,4 @@ textReaderRouter.get("/get-all-erp", getEsalesErp);
 textReaderRouter.get("/export", exportEsales);
 textReaderRouter.get("/exportEsalesErp", exportEsalesErp);
 textReaderRouter.get("/export/transactions", export_transactions)
+textReaderRouter.delete("/deletetrnx", deleteTransactions)

@@ -4,6 +4,7 @@ import { employeeRouter } from './employee-route';
 import { textReaderRouter } from './text-reader-routes'
 import { userRouter } from './user-route';
 import { authRouter } from './auth-route';
+import { journalEntryRouter } from './journal-entry-route';
 
 export const routes = express.Router();
 
@@ -11,3 +12,4 @@ routes.use('/api/employee', employeeRouter);
 routes.use('/api/esales', textReaderRouter);
 routes.use('/api/user', userRouter);
 routes.use('/api/auth', authRouter);
+routes.use('/api/journal', journalEntryRouter);

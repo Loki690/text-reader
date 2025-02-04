@@ -464,16 +464,27 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
     let currentInvoiceDate = "";
     let currentInvoice = "";
     let branchName: string | null = null;
-    let min = null;
+    let min = "";
 
     const transactionSet = new Set<string>();
     const duplicateINVSet = new Set<string>();
     const transactionMap = new Map<string, number>();
     const negativeValues: number[] = [];
+    const duplicateValues = new Map<string, number>(); // Track duplicate invoice values
 
     const transactionsData: { [key: string]: any }[] = [];
 
     let currentTransaction: { [key: string]: any } | null = null;
+
+    // Helper function to format date from "02/01/2024" to "Feb 2024"
+    const formatDate = (dateString: string): string => {
+      const [month, day, year] = dateString.split('/');
+      const date = new Date(`${year}-${month}-${day}`);
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthName = monthNames[date.getMonth()];
+      return `${monthName} ${year}`;
+    };
 
     lines.forEach((line) => {
       // Extract the Branch name
@@ -515,14 +526,15 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
             dateTo = currentInvoiceDate;
           }
 
-          // Update the map to track occurrences
           transactionMap.set(invoice, (transactionMap.get(invoice) || 0) + 1);
 
-          // Start a new transaction entry
+          const formattedDate = formatDate(currentInvoiceDate);
+
           currentTransaction = {
             branch: branchName,
+            min: min,
             INV: invoice,
-            date: currentInvoiceDate,
+            date: formattedDate,  
             VATable: 0,
             VatExempt: 0,
             ZeroRated: 0,
@@ -568,6 +580,12 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
           if (currentTransaction) currentTransaction['Vat12'] += value;
         }
       }
+
+      // Track duplicate invoice values
+      if (currentTransaction && duplicateINVSet.has(currentTransaction.INV)) {
+        const totalValue = vatable + vatExempt + zeroRated + government + vat12;
+        duplicateValues.set(currentTransaction.INV, (duplicateValues.get(currentTransaction.INV) || 0) + totalValue);
+      }
     });
 
     // Convert the Set to an array and sort it
@@ -575,6 +593,12 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
 
     // Calculate the total sum of negative values
     const negativeSum = negativeValues.reduce((sum, value) => sum + value, 0).toFixed(2);
+
+    // Calculate the total value of duplicates
+    let duplicateTotal = 0;
+    duplicateValues.forEach((value) => {
+      duplicateTotal += value;
+    });
 
     // Prepare the response
     const response = {
@@ -586,6 +610,7 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
       lastInvoice: sortedInvoices[sortedInvoices.length - 1] || null,
       duplicateInvoices: Array.from(duplicateINVSet), // List of duplicates
       duplicateCount: duplicateINVSet.size, // Number of duplicates
+      duplicateTotal: duplicateTotal.toFixed(2), // Total value of duplicates
       vatable: vatable.toFixed(2),
       vatExempt: vatExempt.toFixed(2),
       zeroRated: zeroRated.toFixed(2),
@@ -596,8 +621,9 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
       negativeTotal: negativeSum, // Sum of negative values
       transactions_data: transactionsData, 
     };
+
     // Save transactions_data to the database
-    // await TransactionsModel.insertMany(transactionsData);
+    await TransactionsModel.insertMany(transactionsData);
 
     res.status(200).json(response);
   } catch (error) {
@@ -605,3 +631,15 @@ export const processTextFileV2 = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+export const deleteTransactions = async (req: Request, res: Response) => {
+  try {
+    await TransactionsModel.deleteMany({});
+    res.status(200).json({ success: true, message: "All transactions deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting transactions:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+
