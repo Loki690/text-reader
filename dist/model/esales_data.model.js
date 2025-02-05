@@ -33,18 +33,22 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TransactionsModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const TransactionsSchema = new mongoose_1.Schema({
-    branch: { type: String, required: false },
-    INV: { type: String, required: false },
-    min: { type: String, required: false },
-    date: { type: String, required: false },
-    VATable: { type: Number, required: false },
-    VatExempt: { type: Number, required: false },
-    ZeroRated: { type: Number, required: false },
-    Government: { type: Number, required: false },
-    Vat12: { type: Number, required: false }
+const ESalesDataSchema = new mongoose_1.Schema({
+    branchName: { type: String, required: true },
+    branchCode: { type: String, required: true },
+    min: { type: String, required: true },
+    lastOR: { type: String, required: true },
+    dr: { type: String, required: true },
+    ar: { type: String, required: true },
+    form2306: { type: Number, required: true },
+    form2307: { type: Number, required: true },
+    outputVAT: { type: Number, required: true },
+    vatableSales: { type: Number, required: true },
+    zeroRatedSales: { type: Number, required: true },
+    vatExemptSales: { type: Number, required: true },
+    governmentSales: { type: Number, required: true },
+    total: { type: Number, required: true }
 });
-const TransactionsModel = mongoose_1.default.model('Transactions', TransactionsSchema);
-exports.TransactionsModel = TransactionsModel;
+const ESalesDataModel = mongoose_1.default.model('ESalesData', ESalesDataSchema);
+exports.default = ESalesDataModel;

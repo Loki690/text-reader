@@ -21,3 +21,4 @@ exports.textReaderRouter.get("/get-all-erp", testReader_controller_1.getEsalesEr
 exports.textReaderRouter.get("/export", export_controller_1.exportEsales);
 exports.textReaderRouter.get("/exportEsalesErp", export_controller_1.exportEsalesErp);
 exports.textReaderRouter.get("/export/transactions", export_controller_1.export_transactions);
+exports.textReaderRouter.delete("/deletetrnx", testReader_controller_1.deleteTransactions);
