@@ -20,7 +20,7 @@ export const uploadFile = async (req: Request, res: Response) => {
         }
 
         // Define the path to save the uploaded file with a new name
-        const filePath = path.join(uploadsDir, 'journal_entry.xlsx');
+        const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
 
         // Write the file to the uploads directory
         fs.writeFileSync(filePath, req.file.buffer);
@@ -38,7 +38,7 @@ export const processJournalEntry = async (req: Request, res: Response): Promise<
     try {
         // Define the path to the uploaded file
         const uploadsDir = path.join(__dirname, '..', 'uploads')
-        const filePath = path.join(uploadsDir, 'journal_entry.xlsx');
+        const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
 
         // Check if the file exists
         if (!fs.existsSync(filePath)) {
@@ -65,7 +65,7 @@ export const processJournalEntry = async (req: Request, res: Response): Promise<
             "Party (Accounting Entries)",
             "Debit (Accounting Entries)",
             "Credit (Accounting Entries)",
-            "Remark",
+            "User Remark",
             "Reference Number",
             "Reference Date"
         ];
@@ -85,7 +85,7 @@ export const processJournalEntry = async (req: Request, res: Response): Promise<
             const customerName = row[4];
             const debit = row[5];
             const credit = row[6];
-            const remarks = row[7];
+            const user_remarks = row[7];
             const referenceNumber = row[8];
 
             // Convert Excel serial date to JavaScript Date object
@@ -101,7 +101,7 @@ export const processJournalEntry = async (req: Request, res: Response): Promise<
                 customer,
                 debit,
                 0,
-                remarks,
+                user_remarks,
                 referenceNumber,
                 postingDate
             ];
