@@ -77,6 +77,7 @@ const processJournalEntry = (req, res) => __awaiter(void 0, void 0, void 0, func
         // Define the path to the uploaded file
         const uploadsDir = path.join(__dirname, '..', 'uploads');
         const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
+        console.log("File Processed");
         // Check if the file exists
         if (!fs.existsSync(filePath)) {
             res.status(404).json({ error: 'File not found. Please upload the file first.' });

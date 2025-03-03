@@ -39,6 +39,7 @@ export const processJournalEntry = async (req: Request, res: Response): Promise<
         // Define the path to the uploaded file
         const uploadsDir = path.join(__dirname, '..', 'uploads')
         const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
+        console.log("File Processed");
 
         // Check if the file exists
         if (!fs.existsSync(filePath)) {
