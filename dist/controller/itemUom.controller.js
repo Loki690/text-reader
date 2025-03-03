@@ -42,44 +42,47 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processJournalEntry = exports.uploadFile = void 0;
+exports.processItemUom = exports.uploadFileItemUoms = void 0;
 const XLSX = __importStar(require("xlsx"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const uploadFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const uploadFileItemUoms = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Ensure the uploads directory exists
-        const uploadsDir = path.join(__dirname, '..', 'uploads'); //D:\JS\text-reader\uploads
-        console.log("File Uploaded");
+        // upload directory file
+        const uploadsDir = path.join(__dirname, "..", "uploads"); //D:\JS\text-reader\uploads
+        console.log("File Item Uploaded");
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir);
         }
         // Check if a file is uploaded
         if (!req.file) {
-            res.status(400).json({ error: 'No file uploaded' });
+            res.status(400).json({ error: "No file uploaded" });
             return;
         }
         // Define the path to save the uploaded file with a new name
-        const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
+        const filePath = path.join(uploadsDir, "item_uoms.xlsx");
         // Write the file to the uploads directory
         fs.writeFileSync(filePath, req.file.buffer);
-        // Respond with success message
-        res.status(200).json({ message: 'File uploaded successfully', filePath });
+        res.status(200).json({ message: "File uploaded successfully", filePath });
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        res.status(500).json({ message: "An error occurred while uploading the file", error: errorMessage });
+        res.status(500).json({
+            message: "An error occurred while uploading the file",
+            error: errorMessage,
+        });
     }
 });
-exports.uploadFile = uploadFile;
-const processJournalEntry = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+exports.uploadFileItemUoms = uploadFileItemUoms;
+const processItemUom = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Define the path to the uploaded file
-        const uploadsDir = path.join(__dirname, '..', 'uploads');
-        const filePath = path.join(uploadsDir, 'journal_entry1.xlsx');
+        const uploadsDir = path.join(__dirname, "..", "uploads");
+        const filePath = path.join(uploadsDir, "item_uoms.xlsx");
         // Check if the file exists
         if (!fs.existsSync(filePath)) {
-            res.status(404).json({ error: 'File not found. Please upload the file first.' });
+            res
+                .status(404)
+                .json({ error: "File not found. Please upload the file first." });
             return;
         }
         // Read the uploaded file
@@ -90,78 +93,34 @@ const processJournalEntry = (req, res) => __awaiter(void 0, void 0, void 0, func
         const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         // Process the raw data
         const processedData = [];
-        const headers = [
-            "Entry Type",
-            "Company",
-            "Posting Date",
-            "Account (Accounting Entries)",
-            "Party Type (Accounting Entries)",
-            "Party (Accounting Entries)",
-            "Debit (Accounting Entries)",
-            "Credit (Accounting Entries)",
-            "User Remark",
-            "Reference Number",
-            "Reference Date"
-        ];
+        const headers = ["ID", "UOM", "Conversion Factor (UOMs)"];
         // Add headers to the processed data
         processedData.push(headers);
         // Process each row of the raw data
         for (let i = 1; i < rawData.length; i++) {
             const row = rawData[i];
-            // Extract values from the raw data
-            const postingDateSerial = row[0]; // Excel serial date
-            const accountDebit = row[1];
-            const accountCredit = row[2];
-            const customer = row[3];
-            const customerName = row[4];
-            const debit = row[5];
-            const credit = row[6];
-            const user_remarks = row[7];
-            const referenceNumber = row[8];
-            // Convert Excel serial date to JavaScript Date object
-            const postingDate = XLSX.SSF.format('yyyy-mm-dd', postingDateSerial);
-            // Create journal entry rows
-            const journalEntry1 = [
-                "Journal Entry",
-                "Amesco Drug Corporation",
-                postingDate,
-                accountDebit,
-                "Customer",
-                customer,
-                debit,
-                0,
-                user_remarks,
-                referenceNumber,
-                postingDate
-            ];
-            const journalEntry2 = [
-                "",
-                "",
-                "",
-                accountCredit,
-                "",
-                "",
-                0,
-                credit,
-                "",
-                "",
-                ""
-            ];
-            // Add the processed rows to the result
-            processedData.push(journalEntry1);
-            processedData.push(journalEntry2);
+            const item_code = row[0];
+            const uom = row[1];
+            const conversion_factor = row[2];
+            const item_uom_row_1 = [item_code, "PC", 1];
+            const item_uom_row_2 = ["", uom, conversion_factor];
+            processedData.push(item_uom_row_1);
+            processedData.push(item_uom_row_2);
         }
         // Create a new workbook and worksheet
         const newWorkbook = XLSX.utils.book_new();
         const newWorksheet = XLSX.utils.aoa_to_sheet(processedData);
         XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Sheet1");
         // Write the workbook to a file
-        const outputFilePath = path.join(__dirname, 'processed_journal_entries.xlsx');
+        const outputFilePath = path.join(__dirname, "processed_journal_entries.xlsx");
         XLSX.writeFile(newWorkbook, outputFilePath);
         // Send the file as a response
-        res.download(outputFilePath, 'processed_journal_entries.xlsx', (err) => {
+        res.download(outputFilePath, "process_item_uoms.xlsx", (err) => {
             if (err) {
-                res.status(500).json({ message: "An error occurred while downloading the file", error: err.message });
+                res.status(500).json({
+                    message: "An error occurred while downloading the file",
+                    error: err.message,
+                });
             }
             else {
                 // Delete the processed file after sending it
@@ -171,7 +130,10 @@ const processJournalEntry = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        res.status(500).json({ message: "An error occurred", error: errorMessage });
+        res.status(500).json({
+            message: "An error occurred while processing the file",
+            error: errorMessage,
+        });
     }
 });
-exports.processJournalEntry = processJournalEntry;
+exports.processItemUom = processItemUom;

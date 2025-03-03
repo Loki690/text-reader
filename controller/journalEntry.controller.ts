@@ -8,7 +8,7 @@ export const uploadFile = async (req: Request, res: Response) => {
     try {
         // Ensure the uploads directory exists
         const uploadsDir = path.join(__dirname, '..', 'uploads'); //D:\JS\text-reader\uploads
-        console.log(uploadsDir);
+        console.log("File Uploaded");
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir);
         }

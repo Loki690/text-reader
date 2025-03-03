@@ -631,7 +631,7 @@ export const processTextFileV2 = async (
       zeroRated: zeroRated.toFixed(2),
       government: government.toFixed(2),
       vat12: vat12.toFixed(2),
-      total: (vatable + vatExempt + zeroRated + government + vat12).toFixed(2),
+      total: (vatable + vatExempt + zeroRated + government).toFixed(2),
       negativeCount: negativeValues.length, // Count of negative values
       negativeTotal: negativeSum, // Sum of negative values
       transactions_data: transactionsData,

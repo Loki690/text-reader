@@ -12,7 +12,7 @@ const storage = multer_1.default.memoryStorage();
 const upload1 = (0, multer_1.default)({ storage });
 const upload2 = (0, multer_1.default)({ storage });
 exports.textReaderRouter = (0, express_1.Router)();
-exports.textReaderRouter.post("/text-read", upload1.single("file"), testReader_controller_1.processTextFileV3);
+exports.textReaderRouter.post("/text-read", upload1.single("file"), testReader_controller_1.processTextFileV2);
 exports.textReaderRouter.post("/text-read-erp", upload2.single("file"), testReader_controller_1.processTextFileERP);
 exports.textReaderRouter.post("/create", testReader_controller_1.createEsales);
 exports.textReaderRouter.post("/createErp", testReader_controller_1.createEsalesERP);
